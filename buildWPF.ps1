@@ -1,3 +1,4 @@
+$PSDefaultParameterValues['Out-File:Encoding'] = 'utf8'
 # help
 if ($args[0] -eq "-help") {
     echo "	-init 'namespace' ‚Å‰Šú‰»"
