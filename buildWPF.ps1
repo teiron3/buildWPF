@@ -5,6 +5,7 @@ if ($args[0] -eq "-help") {
     echo "	-makeMainWindow で MainWindow.xaml を作成"
     echo "	-makeControl 'ClassName' 'InheritanceClassName' で Control.xaml を作成"
     echo "	-makeMethod 'MethodName' で MethodClass.cs を作成"
+    echo "  -addReference 'dll' 'using' で参照を追加"
     echo "	-build でビルド"
     echo "	-release でリリースビルド"
     return
@@ -38,6 +39,9 @@ if ($args[0] -eq "-makeMainWindow") {
     }
     $namespace = [string](Get-Content .\namespase)
     $xaml = [string] @"
+<!-- add
+    this.DataContext  = new ViewModel();
+-->
 <Window
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
@@ -121,6 +125,19 @@ namespace {0}
     $cs > $f
 }
 
+# addReference
+if ($args[0] -eq "-addReference") {
+    $dll = $args[1]
+    $using = $args[2]
+    @"
+    <ItemGroup>
+        <Reference Include="$using">
+            <HintPath>$dll</HintPath>
+        </Reference>
+    </ItemGroup>
+"@ > ".\csproj\$using.csproj"
+    
+}
 # build
 if ($args[0] -eq "-build" -or $args[0] -eq "-release") {
     if (!(Test-Path cs) -and !(Test-Path xaml) -and !(Test-Path csproj) -and !(Test-Path property) -and !(Test-Path namespase)) {
@@ -141,7 +158,9 @@ if ($args[0] -eq "-build" -or $args[0] -eq "-release") {
     $filename = ''
     Get-ChildItem .\xaml\*.xaml | % {
         $filename = $_.Name
-        $a = Get-Content $_ | ? { $_ -match "^ *<[a-zA-Z]" }
+        #$a = Get-Content $_ | ? { $_ -match "^ *<[a-zA-Z]" }
+        $z = Get-Content $_
+        $a = $z | ? { $_ -match "^ *<[a-zA-Z]" }
         $b = ""
         $c = ""
         if ($a.GetType() = 'String') {
@@ -150,9 +169,10 @@ if ($args[0] -eq "-build" -or $args[0] -eq "-release") {
         else {
             $b = ([regex]::match($a[0].replace("<", "").Trim(), "^[^\s/>]+")).Value
         } 
-        if ($b -eq "Window") {
-            $c = "this.DataContext  = new ViewModel();"
-        }
+        #if ($b -eq "Window") {
+        #    $c = "this.DataContext  = new ViewModel();"
+        #}
+        $c = ([regex]::match($z, "<!-- add.*-->").Value).replace("<!-- add", "").replace("-->", "").Trim()
      
         $initcsstring += @"
     public partial class {0} : {1}
