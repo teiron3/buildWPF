@@ -207,7 +207,7 @@ namespace {0}
             echo test
             echo $raw
             $c = ([regex]::match($raw, "<!-- add initcode.*?-->", "singleline,ignorecase").Value).replace("<!-- add initcode", "").replace("-->", "").Trim()
-            $d = ([regex]::match($raw, "<!-- add classcode.*-->", "singleline,ignorecase").Value).replace("<!-- add classcode", "").replace("-->", "").Trim()
+            $d = ([regex]::match($raw, "<!-- add classcode.*?-->", "singleline,ignorecase").Value).replace("<!-- add classcode", "").replace("-->", "").Trim()
      
             $initcsstring += @"
     public partial class {0} : {1}
