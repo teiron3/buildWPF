@@ -1,404 +1,419 @@
-function Invoke-buildWPF {
+Ôªø<#
+.SYNOPSIS
+WPF„Éì„É´„ÉâÁî®„ÅÆ„Ç≥„Éû„É≥„Éâ
+.DESCRIPTION
+    -init -namesapce 'namespace' „ÅßÂàùÊúüÂåñ
+	-makeMainWindow „ÅßMainWindow.xaml„Çí‰ΩúÊàê'
+	-makeControl 'ParentClassName' 'ClassName' „ÅßControl.xaml„Çí‰ΩúÊàê
+	-makeMethod 'MethodName' „ÅßMethodClass.cs„Çí‰ΩúÊàê
+	-addReferencd 'dllPath' 'usingName' „ÅßÂèÇÁÖß„ÇíËøΩÂä†
+	-build „Åß„Éì„É´„Éâ
+	-release „Åß„É™„É™„Éº„Çπ„Éì„É´„Éâ
+    „Éó„É≠„Éë„ÉÜ„Ç£Áî®tsv„ÅØ[ÂûãÂêç]-[„Éó„É≠„Éë„ÉÜ„Ç£Âêç]-[ÂàùÊúüÂÄ§]-[Â§âÊõ¥ÂÄ§(visibility„ÅÆ„Åø)]„Åß‰ΩúÊàê
+    „Éó„É≠„Éë„ÉÜ„Ç£Âêç„Å´Visibility„ÇíÂê´„ÇÄÂ†¥Âêà„ÄÅVisibilityChange„Å®„ÅÑ„ÅÜ„Ç≥„Éû„É≥„Éâ„ÇÇ‰ΩúÊàê„Åï„Çå„Çã
+    ÂêçÂâç„Å´Visibility„ÇíÂê´„ÇÄ„Éó„É≠„Éë„ÉÜ„Ç£„ÅåÂèñ„ÇãÂÄ§„ÅØ„ÄÅVisibility.Visible„Å®Visibility.Collapsed„Å®Visibility.Hidden
+#>
+
+function Invoke-buildWPF{
     param(
-        [switch]$help,
         [switch]$init,
-        [switch]$makeMainWindow,
+        [string]$namespace = "",
+
         [switch]$makeControl,
-        [switch]$addReference,
+        [switch]$makeMainWindow,
+        [string]$parentClass,
+        [string]$inheritanceClass,
+
+        [switch]$makeMethod,
+        [string]$MethodName = "tepm",
+
+        [switch]$addReferencd,
+        [string]$dllPath = "",
+        [string]$usingName,
+
         [switch]$build,
-        [switch]$release,
-
-        [string]$namespace = '',
-        [string]$InheritanceClassName = '',
-        [string]$ClassName = '',
-        [string]$makeMethod = '',
-        [string]$dll = '',
-        [string]$using = ''
+        [switch]$release
     )
-    
-    if ( -not($help -or $init -or $makeMainWindow -or $makeControl -or $addReference -or $build -or $release)) {
-        $help = $true
-    }
-    $PSDefaultParameterValues['Out-File:Encoding'] = 'utf8'
-    #region scriptblocks
-    # xaml ÇçÏê¨Ç∑ÇÈÇΩÇﬂÇÃÉXÉNÉäÉvÉgÉuÉçÉbÉN
-    $script:namespace = $namespace
-    $script:InheritanceClassName = $InheritanceClassName
-    $script:ClassName = $ClassName
 
-    $xaml = {
-        [string] @"
-<{1}
-    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
-    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-    mc:Ignorable="d"
-    xmlns:local="clr-namespace:{0}"
-    x:Class="{0}.{2}"
-    Width="200"
-    Height="200">
-<!-- add initcode
-{3}
--->
-<!-- add classcode
--->
-</{1}>
-"@ -f $script:namespace, $script:InheritanceClassName, $script:ClassName, $script:initcode > .\xaml\$script:ClassName.xaml
-    }
-    #endregion
-
-    #region help
-    if ($help) {
-        echo "	-init 'namespace' Ç≈èâä˙âª"
-        echo "	-makeMainWindow Ç≈ MainWindow.xaml ÇçÏê¨"
-        echo "	-makeControl 'ClassName' 'InheritanceClassName' Ç≈ Control.xaml ÇçÏê¨"
-        echo "	-makeMethod 'MethodName' Ç≈ MethodClass.cs ÇçÏê¨"
-        echo "`t-addReference 'dllFilePath' 'using' Ç≈éQè∆Çí«â¡"
-        echo "	-build Ç≈ÉfÉoÉbÉOÉrÉãÉh"
-        echo "	-release Ç≈ÉäÉäÅ[ÉXÉrÉãÉh"
-        echo ""
-        echo "  ÉvÉçÉpÉeÉBóptsvÇÕ[å^ñº]_[ÉIÉuÉWÉFÉNÉgñº]_[èâä˙íl]_[ïœçXíl(visibilityÇÃÇ›)]Ç≈çÏê¨"
-        echo "  ÉvÉçÉpÉeÉBñºÇ…VisibilityÇä‹ÇﬁèÍçáÅAVisibilityChangeÇ∆Ç¢Ç§ÉRÉ}ÉìÉhÇ‡çÏê¨Ç≥ÇÍÇÈ"
-        echo "  ñºëOÇ…VisibilityÇä‹ÇﬁÉvÉçÉpÉeÉBÇ™éÊÇÈílÇÕÅAVisibility.Visible Ç∆ Visibility.Collapsed Ç∆ Visibility.Hidden ÇÃÇ›"
-
-        return
-    }
-    #endregion
-
-    #region init
-    if ($init) {
-        if ($namespace.Length -eq 0) {
-            echo "init ÇÃèÍçáÅAÉAÉvÉäñºÇ™ïKóvÇ≈Ç∑"
-            return
+    begin{
+        $PSDefaultParameterValues['Out-File:Encoding'] = 'utf8'
+        if(Test-Path ".\namespace"){
+            $namespace = Get-Content ./namespace 
         }
-        $namespace > .\namespase
-        'cs', 'xaml', 'csproj', 'property' | % {
-            if (-not (Test-Path $_)) {
-                md $_
-            }
-        }
-        return
-    }
-    #endregion
-
-    #region makeMainWindowFile
-    if ($makeMainWindow) {
-        if (!(Test-Path namespase)) {
-            echo "ç\ê¨ÉtÉ@ÉCÉãÇ™Ç†ÇËÇ‹ÇπÇÒ"
-            echo " -init 'namespace' Ç≈èâä˙âªÇµÇƒÇ≠ÇæÇ≥Ç¢"
-            return
-        }
-        if (Test-Path .\xaml\MainWindow.xaml) {
-            echo "MainWindow.xaml ÇÕä˘Ç…ë∂ç›ÇµÇ‹Ç∑"
-            echo "êVÇµÇ≠çÏê¨Ç∑ÇÈèÍçáÇÕÅAä˘ë∂ÇÃÉtÉ@ÉCÉãÇçÌèúÇµÇƒÇ≠ÇæÇ≥Ç¢"
-            return
-        }
-        $script:namespace = [string](Get-Content .\namespase)
-        $script:initcode = "this.DataContext  = new ViewModel();`nInitializeComponent();"
-        $script:InheritanceClassName = 'Window'
-        $script:ClassName = 'MainWindow'
-        & $xaml
-        return
-    }
-    #endregion
-
-    #region makeControlFile
-    if ($makeControl) {
-        if (!(Test-Path namespase)) {
-            echo "ç\ê¨ÉtÉ@ÉCÉãÇ™Ç†ÇËÇ‹ÇπÇÒ"
-            echo " -init 'namespace' Ç≈èâä˙âªÇµÇƒÇ≠ÇæÇ≥Ç¢"
-            return
-        }
-        else {
-            $script:namespace = [string](Get-Content .\namespase)
-        }
-        if ($script:InheritanceClassName.Length -eq 0 -or $script:ClassName.Length -eq 0) {
-            echo "-Control ÇÃÉNÉâÉXñºÇ∆åpè≥å≥ÇÃÉNÉâÉXÇéwíËÇµÇƒÇ≠ÇæÇ≥Ç¢"
-            echo " -makeControl -ClassName 'ClassName' -InheritanceClassName 'InheritanceClassName'"
-            return
-        }
-        if (Test-Path ("./xaml/$script:ClassName.xaml")) {
-            echo "$script:ClassName.xaml ÇÕä˘Ç…ë∂ç›ÇµÇ‹Ç∑"
-            echo "êVÇµÇ≠çÏê¨Ç∑ÇÈèÍçáÇÕÅAä˘ë∂ÇÃÉtÉ@ÉCÉãÇçÌèúÇµÇƒÇ≠ÇæÇ≥Ç¢"
-            return
-        }
-        
-        $script:initcode = 'InitializeComponent();'
-        & $xaml
-    }
-    #endregion
-
-    #region makeMethodFile
-    if ($makeMethod.Length -gt 0) {
-        if (!(Test-Path namespase)) {
-            echo "ç\ê¨ÉtÉ@ÉCÉãÇ™Ç†ÇËÇ‹ÇπÇÒ"
-            echo " -init 'namespace' Ç≈èâä˙âªÇµÇƒÇ≠ÇæÇ≥Ç¢"
-            return
-        }
-        else {
-            $namespace = [string](Get-Content .\namespase)
-        }
-        [string] @"
+        $csheader = @"
 using System;
 using System.Windows;
-using System.Windows.Controls;
-using System.Windows.Threading;
 using System.Windows.Input;
-using System.ComponentModel;
+using System.Windows.Controls;
+using System.Windows.Media;
+using System.Windows.Threading;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
-using System.Linq;
-namespace {0}
-{{
-    public partial class MethodClass
-    {{
-        public static void {1}(ViewModel vm, object parameter)
-        {{
-        }}
-    }}
-}}
-"@ -f $namespace, $makeMethod > ".\cs\method$makeMethod.cs" 
+using System.ComponentModel;
+using System.Linq;`n
+"@
+    }
+    
+    end{
+
+    #region init
+    if($init){
+        if(Test-Path ".\namespace"){
+            echo "Êó¢„Å´„Éó„É≠„Ç∏„Çß„ÇØ„ÉàÂ≠òÂú®„Åó„Åæ„Åô„ÄÇÊñ∞„Åü„Å´‰ΩúÊàê„Åô„ÇãÂ†¥Âêà„ÅØÁõ¥‰∏ã„ÅÆ namespace„Éï„Ç°„Ç§„É´„ÇíÂâäÈô§„Åó„Å¶„Åè„Å†„Åï„ÅÑ"
+            return
+        }
+
+        if($namespace.Length -le 0){
+            "-init „Å´„ÅØ„Ç¢„Éó„É™Âêç„ÅåÂøÖË¶Å„Åß„Åô"
+            "`tInvoke-buildWPF -init -namespace 'namespase'" 
+            return
+        }
+    
+        $namespace > .\namespace
+        'cs','xaml','csproj','property'|?{-not (Test-Path $_)}|%{md $_}
+
+        return
+    }
+    #endregion
+
+    #region makeControl
+    if($makeControl -or $makeMainWindow){
+        if($namespace.Length -le 0){
+            "ÊßãÊàê„Éï„Ç°„Ç§„É´„Åå„ÅÇ„Çä„Åæ„Åõ„Çì"
+            "`t-init -namesapce 'namespace'„ÅßÂàùÊúüÂåñ„Åó„Å¶„Åè„Å†„Åï„ÅÑ"
+            return
+        }
+
+        $addCsCode = ""
+        $addClassCode = ""
+        $addTitle = ""
+        if($makeMainWindow){
+            $parentClass = "Window"
+            $InheritanceClass = "MainWindow"
+            $addTitle = "Title=`"$namespace`""
+            $addCsCode = "this.DataContext = (vm = new ViewModel());"
+            $addClassCode = "private ViewModel vm;"
+        }
+
+        if($makeControl){
+            if($inheritanceClass.Length -le 0 -or $parentClass.Length -le 0){
+                "Control „ÅÆÁ∂ôÊâøÂÖÉ„ÇØ„É©„Çπ„Å®‰ΩúÊàê„ÇØ„É©„Çπ„Çí„Åó„Å¶„Åè„Å†„Åï„ÅÑ"
+                "command : buildWPF -makeControl -parenctClass parentClassName -inheritacneClass makeClassName"
+                return
+            }
+            
+            if(Test-Path ".\xaml\$inheritanceClass.xaml"){
+                "‰ΩúÊàê„Åó„Çà„ÅÜ„Å®„Åó„Å¶„ÅÑ„Çãxaml„Éï„Ç°„Ç§„É´„ÅØÊó¢„Å´Â≠òÂú®„Åó„Å¶„ÅÑ„Åæ„Åô"
+                "Êñ∞„Åü„Å´‰ΩúÊàê„Åô„ÇãÂ†¥Âêà„ÅØÂÖÉ„Éï„Ç°„Ç§„É´„ÇíÂâäÈô§„Åô„Çã„Åã„ÇØ„É©„ÇπÂêç„ÇíÂ§âÊõ¥„Åó„Å¶„Åè„Å†„Åï„ÅÑ"
+                return
+            }
+        }
+
+        "<$parentClass",
+	    'xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"',
+	    'xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"',
+	    "x:Class=`"$namespace.$inheritanceClass`"",
+	    "xmlns:local=`"clr-namespace:$namespace`"",
+	    $addTitle,
+	    'Width="500"',
+	    'Height="500"',
+	    ">",
+        "<!-- add init cscode",
+        $addCsCode,
+        "-->",
+        "<!-- add class cscode",
+        $addClassCode,
+        "-->",
+        "</$parentClass>"|&{begin{$xaml= ""} process{if($_.Length -gt 0){$xaml += "$_`n"} } end{$xaml > "./xaml/$inheritanceClass.xaml"}}
+    
+        return
+    }
+    #endregion
+
+    #region makeMethod
+    if($makeMethod){
+        if($namespace.Length -le 0){
+            "ÊßãÊàê„Éï„Ç°„Ç§„É´„Åå„ÅÇ„Çä„Åæ„Åõ„Çì"
+            "command : -init -namespace 'namespace' „ÅßÂàùÊúüÂåñ„Åó„Å¶„Åè„Å†„Åï„ÅÑ"
+            return
+        }
+
+        if(Test-Path ".\cs\method$MethodName.cs"){
+            "Âêå„Åò„É°„ÇΩ„ÉÉ„Éâ„Éï„Ç°„Ç§„É´„ÅåÂ≠òÂú®„Åó„Åæ„Åô"
+            "Êñ∞„Åü„Å´‰ΩúÊàê„Åô„ÇãÂ†¥Âêà„ÅØÂÖÉ„Éï„Ç°„Ç§„É´„ÇíÂâäÈô§„Åô„Çã„ÅãÂêçÂâç„ÇíÂ§âÊõ¥„Åó„Å¶„Åè„Å†„Åï„ÅÑ"
+            return
+        }
+
+
+        $csheader + @"
+namespace $namespace{
+    public static partial class MethodClass{
+        public static void $MethodName(ViewModel vm, object parameter){
+        }
+    }
+}
+"@ > ".\cs\method$MethodName.cs"
+        return;
     }
     #endregion
 
     #region addReference
-    if ($addReference) {
-        if ($dll.Length -eq 0 -or $using.Length -eq 0) {
-            echo "-addReference -dll 'dllFilePath' -using 'using' Ç≈éQè∆Çí«â¡"
+    if($addReference){
+        if(!(Test-Path .\namespace)){
+            "ÊßãÊàê„Éï„Ç°„Ç§„É´„Åå„ÅÇ„Çä„Åæ„Åõ„Çì"
+            "command : -init appname „ÅßÂàùÊúüÂåñ„Åó„Å¶„Åè„Å†„Åï„ÅÑ"
             return
         }
-        @"
-    <ItemGroup>
-        <Reference Include="$using">
-            <HintPath>$dll</HintPath>
+        if($dllPath.Length -le 0 -or $usingName.Length -le 0){
+            "dllPath„Åæ„Åü„ÅØusingName„Åå„ÅÇ„Çä„Åæ„Åõ„Çì"
+            "command: -addReference -dllPath 'dllFullPath' -usingName 'usingName'"
+        }
+@"
+        <Reference Include="$usingName">
+            <HintPath>$dllPath</HintPath>
         </Reference>
-    </ItemGroup>
-"@ >> ".\csproj\$using.csproj"
+"@ >> ".\csproj\$addReference.csproj"
+        return
     }
     #endregion
 
     #region build
-    if ($build -or $release) {
-        if (!(Test-Path cs) -and !(Test-Path xaml) -and !(Test-Path csproj) -and !(Test-Path property) -and !(Test-Path namespase)) {
-            echo "ç\ê¨ÉtÉ@ÉCÉãÇ∆ÉfÉBÉåÉNÉgÉäÇ™Ç†ÇËÇ‹ÇπÇÒ"
-            echo " -init 'namespace' Ç≈èâä˙âªÇµÇƒÇ≠ÇæÇ≥Ç¢"
+    if($build -or $release){
+
+        #region pre-process
+        if($namespace.Length -le 0){
+            "ÊßãÊàê„Éï„Ç°„Ç§„É´„Åå„ÅÇ„Çä„Åæ„Åõ„Çì"
+            "`t-init -namesapce 'namespace'„ÅßÂàùÊúüÂåñ„Åó„Å¶„Åè„Å†„Åï„ÅÑ"
             return
         }
 
-        rm .\*.cs
-        rm .\*.xaml
-        rm .\*.csproj
-        cp .\cs\*.cs .
-        cp .\xaml\*.xaml .
-        if ($release) {
-            $outputpath = "release"
-        }
-        else {
-            $outputpath = "debug"
-        }
-        $namespace = [string](Get-Content .\namespase)
-    
-        ## make initxaml.cs
-        $initcsstring = ""
-        Get-ChildItem .\xaml\*.xaml | % {
-            $raw = Get-Content $_ -Raw
-            $a = $raw | ? { $_ -match "^ *<[a-zA-Z]" } | % { ([regex]::match($_.replace("<", "").Trim(), "^[^\s/>]+")).Value }
-            $b = if ($a.GetType() = 'String') { $a } else { $a[0] } 
-            echo test
-            echo $raw
-            $c = ([regex]::match($raw, "<!-- add initcode.*?-->", "singleline,ignorecase").Value).replace("<!-- add initcode", "").replace("-->", "").Trim()
-            $d = ([regex]::match($raw, "<!-- add classcode.*?-->", "singleline,ignorecase").Value).replace("<!-- add classcode", "").replace("-->", "").Trim()
-     
-            $initcsstring += @"
-    public partial class {0} : {1}
-    {{
-        public {0}()
-        {{ //
-            {2}
-        }}
-        {3}
-    }}
-"@ -f $_.name.Replace(".xaml", ""), $b, $c, $d
+        if("cs","xaml","csproj","property"|& {
+            begin{$flg = $True}
+            process{$lg = $flg -and (Test-Path $_)}
+            end{-not $flg}
+        }){
+            "ÊßãÊàê„Éï„Ç°„Ç§„É´„Å®„Éá„Ç£„É¨„ÇØ„Éà„É™„Åå„ÅÇ„Çä„Åæ„Åõ„Çì"
+            "-init -namespace 'namespace'„ÅßÂàùÊúüÂåñ„Åó„Å¶„Åè„Å†„Åï„ÅÑ"
+            return
         }
 
-        @"
-using System;
-using System.ComponentModel;
-using System.Windows;
-using System.Windows.Controls;
-namespace {0}
-{{
-{1}
-}}
-"@ -f $namespace, $initcsstring > .\initxaml.cs
+        ".\*.cs",".\*.xaml",".\*.csproj"|%{rm $_}
+        ".\cs\*.cs",".\xaml\*.xaml"|%{cp $_ .}
 
-        ##make viemodel_base.cs
-        $head = @"
-using System;
-using System.Windows;
-using System.Windows.Threading;
-using System.Windows.Input;
-using System.ComponentModel;
-using System.Windows.Controls;
-using System.Collections.ObjectModel;
-using System.Linq;
-namespace {0}
-"@ -f $namespace
+        $outputpath = if($build){"build"}else{"release"}
+
+        #endregion
+
+        #region make initxaml.cs
+        Get-ChildItem .\xaml\*.xaml|&{
+            begin{
+                $initcscodestring = ""
+            }
+
+            process{
+                $Classname = $_.Name.replace(".xaml", "")
+                $xamlcode = Get-Content $_ -Raw
+
+                $parentClass = [regex]::match($xamlcode, "<[a-zA-Z0-9_]+[\s/>]", [System.Text.RegularExpressions.RegexOptions]::Singleline).Value.replace("<","")
+
+                $addinitcscode = [regex]::match($xamlcode, "<!-- add init cscode.*?-->", [System.Text.RegularExpressions.RegexOptions]::Singleline).Value.replace("<!-- add init cscode", "").replace("-->","")
+                
+                $addclassmembercscode = [regex]::match($xamlcode, "<!-- add class cscode.*?-->", [System.Text.RegularExpressions.RegexOptions]::Singleline).Value.replace( "<!-- add class cscode", "").replace("-->","")
+                write-host "this :$addclassmembercscode"
+                "public partial class $Classname : $parentClass{",
+                "public $Classname(){",
+                    "InitializeComponent();",
+                    $addinitcscode,
+                "}",
+                $addclassmembercscode,
+                "}"|%{$initcscodestring += $_ + "`n"}
+            }
+
+            end{
+                $csheader + "namespace $namespace{`n" + $initcscodestring + "`n}" > ".\initxaml.cs"
+            }
+        }
+        #endregion
+
+        #region make viewmodel_base.cs
         $body = @"
-{
-    public partial class ViewModel : INotifyPropertyChanged
-    {
-        Action action = () => {};
+namespace $namespace{
+    public partial class ViewModel : INotifyPropertyChanged{
         public event PropertyChangedEventHandler PropertyChanged;
-        private void NotifyPropertyChanged(string info)
-        {
-            if (PropertyChanged != null)
-            {
-                PropertyChanged(this, new PropertyChangedEventArgs(info));
-                Application.Current.Dispatcher.Invoke(
-                        action,
-                        DispatcherPriority.Background, new object[] { }
-                );
-            }
+		private void NotifyPropertyChanged(string info){
+			if(PropertyChanged != null){
+				PropertyChanged(this, new PropertyChangedEventArgs(info));
+				Application.Current.Dispatcher.Invoke(
+					new Action(() => {}),DispatcherPriority.Background, new object[]{}
+				);
+			}
         }
     }
-    public class MakeCommandClass : ICommand
-    {
-        ViewModel vm;
-        Action<ViewModel, object> execmd;
-        public MakeCommandClass(ViewModel arg, Action<ViewModel, object> argdelegate)
-        {
-            vm = arg;
-            execmd = argdelegate;
-        }
-        public event EventHandler CanExecuteChanged;
-        public bool CanExecute(object parameter) { return true; }
-        public void Execute(object parameter) { execmd(vm, parameter); }
-    }
+
+    class MakeCommandClass : ICommand{
+		ViewModel vm;
+		Action<ViewModel, object> execmd;
+		public MakeCommandClass(ViewModel arg_vm, Action<ViewModel, object> arg_cmd){
+			vm = arg_vm;
+			execmd = arg_cmd;
+		}
+		public event EventHandler CanExecuteChanged;
+		public bool CanExecute(object parameter){return true;}
+		public void Execute(object parameter){execmd(vm, parameter);}
+	}
 }
-"@
-        $head + $body > .\viemodel_base.cs
-    
-        ## make viewmodel_property.cs
-        $body = "{`npublic partial class ViewModel{`n"
-        Get-ChildItem .\property\*.tsv | Get-content | % {
-            $a = $_.split("`t")
-            if ($a[0] -match 'ObservableCollection') {
-                $body += "private {0} _{1} = new {0}();`n" -f $a[0], $a[1]
-                $body += "public {0} {1} {{ get _{1}; }};`n" -f $a[0], $a[1]
-            }
-            else {
-                $body += "private {0} _{1} = {2};`n" -f $a[0], $a[1], $a[2]
-                $body += @"
-            public {0} {1} {{
-                get {{ return _{1}; }}
-                set {{
-                    if(_{1} == value){{
-                        return;
-                    }}else{{
-                        _{1} = value;
-                        NotifyPropertyChanged("{1}");
-                    }}
-                }}
-            }}`n
-"@ -f $a[0], $a[1]
-            }
-        }
-        $body += "}}"
-        $head + $body > .\viemodel_property.cs
-    
-        ## make viewmodel_command.cs
-        $body = "{`npublic partial class ViewModel{`n"
-        $a = Get-ChildItem .\cs\method*.cs | Get-content | ? { $_ -match "public static void" } | % {
-            [regex]::match($_.replace("public static void", "").Trim() , "^[^\s(]+").Value
-        }
-        $a | % {
-            $body += @"
-        private ICommand _$a; public ICommand $a{
-            get{
-                if(_$a == null){
-                    _$a = new MakeCommandClass(this, new Action<ViewModel, object>(MethodClass.$a));
-                }
-                return _$a;
-            }
-        }
-"@
-        }
-        Get-ChildItem .\property\*.tsv | Get-content | ? { $_.split("`t")[1] -match "Visibility" } | % {
-            $pro = $_.split("`t")[1]
-            $c = $_.split("`t")[1] + "Change"
-            $p1 = $_.split("`t")[2]
-            $p2 = $_.split("`t")[3]
-            $body += @"
-        private ICommand _$c; public ICommand $c{
-            get{
-                if(_$c == null){
-                    _$c = new MakeCommandClass(
-                        this, new Action<ViewModel, object>((vm, obj) => vm.$pro = (vm.$pro == $p1) ? $p2 : $p1
-                    ));
-                }
-                return _$c;
-            }
-        }
-"@
-        }
-        $body += "}}"
-        $head + $body > .\viemodel_command.cs
-        
-        ## make csproj
+"@ 
+        $csheader + $body > ".\viewmodel_base.cs"
+        #endregion
+
+        #region make viewmodel_property.cs
         $body = @"
-<Project DefaultTargets="Build"
-     xmlns="http://schemas.microsoft.com/developer/msbuild/2003"
-     ToolsVersion="4.0">
-    <PropertyGroup>
-        <Configuration>Debug</Configuration>
-        <TargetFrameworkVersion>v4.8</TargetFrameworkVersion>
-        <Platform>AnyCPU</Platform>
+namespace $namespace{
+    public partial class ViewModel{`n
+"@
+        Get-ChildItem .\property\*.tsv|Get-Content|%{
+            $row = $_.split("`t")
+            if($row[0] -match "ObservableCollection"){
+                $body += "`t`tprivate {0} _{1} = new {0}();`n" -f $row[0], $row[1]
+		        $body += "`t`tpublic {0} {1}{{ get{{ return _{1};}} }}" -f $row[0], $row[1]
+            }else{
+                $body += "`t`tprivate {0} _{1} = {2};`n" -f $row[0], $row[1],  $row[2]
+		        $body += @"
+        public {0} {1}{{
+            get{{ return _{1};}}
+            set{{
+                if(_{1} == value){{
+                    return;
+                }}else{{
+                    _{1} = value;
+                    NotifyPropertyChanged("{1}");
+                }}
+            }}
+        }}`n
+"@ -f $row[0], $row[1]
+            }
+        }
+
+        $body += "`t}`n}"
+        $csheader + $body > .\viewmodel_property.cs
+        #endregion
+    
+        #region make viewmodel_command.cs
+        $body = @"
+namespace $namespace{
+    public partial class ViewModel{`n
+"@
+        Get-ChildItem .\cs\method*.cs|Get-Content|?{ $_ -match "public static void"}|%{
+            [regex]::match($_.replace("public static void", "").Trim(), "^[^\s(]+").Value
+        }|%{
+        $body += @"
+        private ICommand _$_; public ICommand $_{
+            get{
+                if(_$_ == null){
+                    _$_ = new MakeCommandClass(this, new Action<ViewModel, object>(MethodClass.$_));
+                }
+                return _$_;
+            }
+        } 
+"@
+        }
+
+        Get-ChildItem .\property\*.tsv | Get-Content | ?{ $_.split("`t")[1] -match "Visibility"} | %{
+            $recode = $_.split("`t")
+            $propertyname = $recode[1]
+            $methodname = $propertyname + "Change"
+            $value1 = $recode[2]
+            $value2 = $recode[3]
+            $body += @"
+        private ICommand _$methodname; public ICommand $methodname{
+            get{
+                if(_$methodname == null){
+                    _$methodname = new MakeCommandClass(
+                        this,
+                        new Action<ViewModel, object>(
+                            (vm, obj) => { vm.$propertyname = (vm.$propertyname == $value1) ? $value2 : $value1;}
+                        )
+                    );
+                }
+                return _$methodname;
+            }
+        }
+
+"@
+        }
+        $body += "`t}`n}"
+        $csheader + $body > .\viewmodel_command.cs
+        #endregion
+
+        #region make csproj
+        $body = @"
+<Project
+	xmlns="http://schemas.microsoft.com/developer/msbuild/2003"
+	DefaultTargets="Build"
+	ToolsVersion="4.0"	
+>
+	<PropertyGroup>
+		<TargetFrameworkVersion>v4.8</TargetFrameworkVersion>
+		<PlatformTarget>x64</PlatformTarget>
         <RootNamespace>$namespace</RootNamespace>
-        <AssemblyName>$namespace</AssemblyName>
-        <OutputType>WinExe</OutputType>
-        <OutputPath>.\$outputpath</OutputPath>
-    </PropertyGroup>
-    <ItemGroup>
-        <Reference Include="System" />
-        <Reference Include="System.Xaml" />
-        <Reference Include="WindowsBase" />
-        <Reference Include="PresentationCore" />
-        <Reference Include="PresentationFramework" />
+		<AssemblyName>$namespace</AssemblyName>
+		<OutputType>WinExe</OutputType>
+		<OutputPath>.\$outputpath</OutputPath>
+	</PropertyGroup>
+
+	<ItemGroup>
+		<Reference Include="System" />
+		<Reference Include="System.Data" />
+		<Reference Include="System.Xml" />
+		<Reference Include="System.Xaml" />
+		<Reference Include="WindowsBase" />
+		<Reference Include="PresentationCore" />
+		<Reference Include="PresentationFramework" />
     </ItemGroup>
 
-    <!-- xaml -->
+    <!-- XAML -->
     <ItemGroup>
         <ApplicationDefinition Include="Application.xaml" />`n
 "@
-        Get-ChildItem .\xaml\*.xaml | % {
-            $body += "        <Page Include=`"{0}`" />`n" -f $_.Name
+        Get-ChildItem .\xaml\*.xaml|%{
+            $body += "`t`t<Page Include=`"{0}`" />`n" -f $_.Name
         }
         $body += @"
     </ItemGroup>
     <!-- cs -->
-    <ItemGroup>
+    <ItemGroup>`n
 "@
-        Get-ChildItem *.cs | % {
-            $body += "        <Compile Include=`"{0}`" />`n" -f $_.Name
-        } 
-        $body += "  </ItemGroup>`n"
-        Get-ChildItem .\csproj\*.csproj | get-content | % { $body += $_ }
+        Get-ChildItem *.cs | %{
+            $body += @"
+        <Compile Include=`"{0}`" />`n 
+"@ -f $_.Name
+        }
         $body += @"
-    <Import Project="`$(MSBuildBinPath)\Microsoft.CSharp.targets" />
+    </ItemGroup>
+    <!-- Reference -->
+    <ItemGroup>`n
+"@
+        Get-ChildItem .\csproj\*.csproj | Get-Content|%{ $body += $_}
+        $body += @"
+    </ItemGroup>
+	<Import Project="`$(MSBuildBinPath)\Microsoft.CSharp.targets" />
 </Project>
 "@
         $body > "$namespace.csproj"
-    
-        ## make Application.xaml
-        @"
-<Application
-    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-    StartupUri="MainWindow.xaml"
-    />
-"@ > .\Application.xaml
+        #endregion
 
-    
-        C:\Windows\Microsoft.NET\Framework\v4.0.30319\MSBuild.exe "$namespace.csproj"
+        #region make Application.xaml
+    @"
+<Application
+	xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+	StartupUri="MainWindow.xaml"
+/>
+"@ > Application.xaml
+        #endregion 
+
+        C:\Windows\Microsoft.NET\Framework64\v4.0.30319\MSBuild
+ 
+    }
+    #endregion
     }
 }
