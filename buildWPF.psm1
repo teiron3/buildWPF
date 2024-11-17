@@ -31,6 +31,9 @@ function Invoke-buildWPF{
         [string]$dllPath = "",
         [string]$usingName,
 
+        [switch]$addContent,
+        [string]$LinkPath = "",
+
         [switch]$build,
         [switch]$release
     )
@@ -42,11 +45,13 @@ function Invoke-buildWPF{
         }
         $csheader = @"
 using System;
+using System.IO;
 using System.Windows;
 using System.Windows.Input;
 using System.Windows.Controls;
 using System.Windows.Media;
 using System.Windows.Threading;
+using System.Threading.Tasks;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
@@ -70,7 +75,7 @@ using System.Linq;`n
         }
     
         $namespace > .\namespace
-        'cs','xaml','csproj','property'|?{-not (Test-Path $_)}|%{md $_}
+        'cs','xaml','csproj','property','dll'|?{-not (Test-Path $_)}|%{md $_}
 
         return
     }
@@ -114,6 +119,7 @@ using System.Linq;`n
 	    'xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"',
 	    "x:Class=`"$namespace.$inheritanceClass`"",
 	    "xmlns:local=`"clr-namespace:$namespace`"",
+        "xmlns:i=`"http://schemas.microsoft.com/xaml/behaviors`"",
 	    $addTitle,
 	    'Width="500"',
 	    'Height="500"',
@@ -123,6 +129,13 @@ using System.Linq;`n
         "-->",
         "<!-- add class cscode",
         $addClassCode,
+        "-->",
+        "<!-- add event example",
+        "<i:Interaction.Triggers>",
+        "<i:EventTrigger EventName=`"MouseDoubleClick`">",
+        "<i:InvokeCommandAction Command=`"{Binding ListBoxMouseDoubleClick}`" />",
+        "</i:EventTrigger>",
+        "</i:Interaction.Triggers>",
         "-->",
         "</$parentClass>"|&{begin{$xaml= ""} process{if($_.Length -gt 0){$xaml += "$_`n"} } end{$xaml > "./xaml/$inheritanceClass.xaml"}}
     
@@ -176,6 +189,28 @@ namespace $namespace{
         return
     }
     #endregion
+
+    #region addContent
+    if($addContent){
+        if(!(Test-Path .\namespace)){
+            "構成ファイルがありません"
+            "command : -init appname で初期化してください"
+            return
+        }
+        if($HintPath.Length -le 0 -or $usingName.Length -le 0){
+            "dllPathまたはusingNameがありません"
+            "command: -addContent -LinkPath 'LinkPath'"
+        }
+@"
+        <Content Include="$LinkPath">
+            <HintPath>$LinkPath</HintPath>
+            <CopyToOutputDirectory>AlWays</CopyToOutputDirectory>
+        </Content>
+"@ >> ".\csproj\$addReference.csproj"
+        return
+    }
+    #endregion
+
 
     #region build
     if($build -or $release){
@@ -369,6 +404,17 @@ namespace $namespace{
 		<Reference Include="WindowsBase" />
 		<Reference Include="PresentationCore" />
 		<Reference Include="PresentationFramework" />
+        <Reference Include="Microsoft.Xaml.Behaviors">
+            <HintPath>dll\Microsoft.Xaml.Behaviors.dll</HintPath>
+        </Reference>
+        <Content Include="dll\Microsoft.Xaml.Behaviors.Design.dll">
+            <Link>Microsoft.Xaml.Behaviors.Design.dll</Link>
+            <CopyToOutputDirectory>AlWays</CopyToOutputDirectory>
+        </Content>
+        <Content Include="dll\Microsoft.Xaml.Behaviors.DesignTools.dll">
+            <Link>Microsoft.Xaml.Behaviors.DesignTools.dll</Link>
+            <CopyToOutputDirectory>AlWays</CopyToOutputDirectory>
+        </Content>
     </ItemGroup>
 
     <!-- XAML -->
