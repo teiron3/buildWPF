@@ -35,7 +35,9 @@ function Invoke-buildWPF{
         [string]$LinkPath = "",
 
         [switch]$build,
-        [switch]$release
+        [switch]$release,
+
+        [switch]$test
     )
 
     begin{
@@ -43,23 +45,22 @@ function Invoke-buildWPF{
         if(Test-Path ".\namespace"){
             $namespace = Get-Content ./namespace 
         }
-        $csheader = @"
-using System;
-using System.IO;
-using System.Windows;
-using System.Windows.Input;
-using System.Windows.Controls;
-using System.Windows.Media;
-using System.Windows.Threading;
-using System.Threading.Tasks;
-using System.Collections.Generic;
-using System.Collections.ObjectModel;
-using System.ComponentModel;
-using System.Linq;`n
-"@
+        if(Test-Path ($PSScriptRoot + '\parts\csheader.cs')){
+            $csheader = cat ($PSScriptRoot + '\parts\csheader.cs') -raw
+        }
     }
     
     end{
+
+    #region test
+    ####test space####
+
+
+
+
+
+    ####test space####
+    #endregion
 
     #region init
     if($init){
@@ -75,7 +76,10 @@ using System.Linq;`n
         }
     
         $namespace > .\namespace
-        'cs','xaml','csproj','property','dll'|?{-not (Test-Path $_)}|%{md $_}
+        'cs','xaml','csproj','property'|?{-not (Test-Path $_)}|%{md $_}
+        if(-not (Test-Path 'dll')){
+            cp ($PSScriptRoot + "\dll") 'dll' -Recurse
+        }
 
         return
     }
