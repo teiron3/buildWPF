@@ -25,7 +25,7 @@ function Invoke-buildWPF{
         [string]$inheritanceClass,
 
         [switch]$makeMethod,
-        [string]$MethodName = "tepm",
+        [string]$MethodName = "tempMethod",
 
         [switch]$addReferencd,
         [string]$dllPath = "",
@@ -165,7 +165,7 @@ function Invoke-buildWPF{
         $csheader + @"
 namespace $namespace{
     public static partial class MethodClass{
-        public static void $MethodName(ViewModel vm, object parameter){
+        public static async Task $MethodName(ViewModel vm, object parameter){
         }
     }
 }
@@ -291,14 +291,21 @@ namespace $namespace{
 
     class MakeCommandClass : ICommand{
 		ViewModel vm;
-		Action<ViewModel, object> execmd;
-		public MakeCommandClass(ViewModel arg_vm, Action<ViewModel, object> arg_cmd){
+		Func<ViewModel, object, Task> execmd;
+		public MakeCommandClass(ViewModel arg_vm, Func<ViewModel, object, Task> arg_cmd){
 			vm = arg_vm;
 			execmd = arg_cmd;
 		}
 		public event EventHandler CanExecuteChanged;
 		public bool CanExecute(object parameter){return true;}
-		public void Execute(object parameter){execmd(vm, parameter);}
+		public void Execute(object parameter){
+            var task = execmd(vm, parameter);
+            while(!task.IsCompleted){
+            	Application.Current.Dispatcher.Invoke(
+					new Action(() => {}),DispatcherPriority.Background, new object[]{}
+				);
+            };
+        }
 	}
 }
 "@ 
@@ -342,14 +349,14 @@ namespace $namespace{
 namespace $namespace{
     public partial class ViewModel{`n
 "@
-        Get-ChildItem .\cs\method*.cs|Get-Content|?{ $_ -match "public static void"}|%{
-            [regex]::match($_.replace("public static void", "").Trim(), "^[^\s(]+").Value
+        Get-ChildItem .\cs\method*.cs|Get-Content|?{ $_ -match "public static async Task"}|%{
+            [regex]::match($_.replace("public static async Task", "").Trim(), "^[^\s(]+").Value
         }|%{
         $body += @"
         private ICommand _$_; public ICommand $_{
             get{
                 if(_$_ == null){
-                    _$_ = new MakeCommandClass(this, new Action<ViewModel, object>(MethodClass.$_));
+                    _$_ = new MakeCommandClass(this, new Func<ViewModel, object, Task>(MethodClass.$_));
                 }
                 return _$_;
             }
