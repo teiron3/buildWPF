@@ -127,6 +127,9 @@ function Invoke-buildWPF{
 	    $addTitle,
 	    'Width="500"',
 	    'Height="500"',
+        'AllowDrop="True"',
+        'Drop=""',
+        'DragOver="',
 	    ">",
         "<!-- add init cscode",
         $addCsCode,
@@ -282,9 +285,7 @@ namespace $namespace{
 		private void NotifyPropertyChanged(string info){
 			if(PropertyChanged != null){
 				PropertyChanged(this, new PropertyChangedEventArgs(info));
-				Application.Current.Dispatcher.Invoke(
-					new Action(() => {}),DispatcherPriority.Background, new object[]{}
-				);
+
 			}
         }
     }
