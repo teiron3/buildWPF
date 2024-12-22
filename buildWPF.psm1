@@ -14,7 +14,7 @@ WPFビルド用のコマンド
     名前にVisibilityを含むプロパティが取る値は、Visibility.VisibleとVisibility.CollapsedとVisibility.Hidden
 #>
 
-function Invoke-buildWPF{
+function Invoke-buildWPF {
     param(
         [switch]$init,
         [string]$namespace = "",
@@ -40,245 +40,249 @@ function Invoke-buildWPF{
         [switch]$test
     )
 
-    begin{
+    begin {
         $PSDefaultParameterValues['Out-File:Encoding'] = 'utf8'
-        if(Test-Path ".\namespace"){
+        if (Test-Path ".\namespace") {
             $namespace = Get-Content ./namespace 
         }
-        if(Test-Path ($PSScriptRoot + '\parts\csheader.cs')){
+        if (Test-Path ($PSScriptRoot + '\parts\csheader.cs')) {
             $csheader = cat ($PSScriptRoot + '\parts\csheader.cs') -raw
         }
     }
     
-    end{
+    end {
 
-    #region test
-    ####test space####
-
-
+        #region test
+        ####test space####
 
 
 
-    ####test space####
-    #endregion
 
-    #region init
-    if($init){
-        if(Test-Path ".\namespace"){
-            echo "既にプロジェクト存在します。新たに作成する場合は直下の namespaceファイルを削除してください"
-            return
-        }
 
-        if($namespace.Length -le 0){
-            "-init にはアプリ名が必要です"
-            "`tInvoke-buildWPF -init -namespace 'namespase'" 
-            return
-        }
+        ####test space####
+        #endregion
+
+        #region init
+        if ($init) {
+            if (Test-Path ".\namespace") {
+                echo "既にプロジェクト存在します。新たに作成する場合は直下の namespaceファイルを削除してください"
+                return
+            }
+
+            if ($namespace.Length -le 0) {
+                "-init にはアプリ名が必要です"
+                "`tInvoke-buildWPF -init -namespace 'namespase'" 
+                return
+            }
     
-        $namespace > .\namespace
-        'cs','xaml','csproj','property'|?{-not (Test-Path $_)}|%{md $_}
-        if(-not (Test-Path 'dll')){
-            cp ($PSScriptRoot + "\dll") 'dll' -Recurse
-        }
+            $namespace > .\namespace
+            'cs', 'xaml', 'csproj', 'property' | ? { -not (Test-Path $_) } | % { md $_ }
+            if (-not (Test-Path 'dll')) {
+                cp ($PSScriptRoot + "\dll") 'dll' -Recurse
+            }
 
-        return
-    }
-    #endregion
-
-    #region makeControl
-    if($makeControl -or $makeMainWindow){
-        if($namespace.Length -le 0){
-            "構成ファイルがありません"
-            "`t-init -namesapce 'namespace'で初期化してください"
             return
         }
+        #endregion
 
-        $addCsCode = ""
-        $addClassCode = ""
-        $addTitle = ""
-        if($makeMainWindow){
-            $parentClass = "Window"
-            $InheritanceClass = "MainWindow"
-            $addTitle = "Title=`"$namespace`""
-            $addCsCode = "this.DataContext = (vm = new ViewModel());"
-            $addClassCode = "private ViewModel vm;"
+
+        
+        #region makeControl
+        if ($makeControl -or $makeMainWindow) {
+            if ($namespace.Length -le 0) {
+                "構成ファイルがありません"
+                "`t-init -namesapce 'namespace'で初期化してください"
+                return
+            }
+
+            $addCsCode = ""
+            $addClassCode = ""
+            $addTitle = ""
+            if ($makeMainWindow) {
+                $parentClass = "Window"
+                $InheritanceClass = "MainWindow"
+                $addTitle = "Title=`"$namespace`""
+                $addCsCode = "this.DataContext = (vm = new ViewModel());"
+                $addClassCode = "private ViewModel vm;"
+            }
+
+            if ($makeControl) {
+                if ($inheritanceClass.Length -le 0 -or $parentClass.Length -le 0) {
+                    "Control の継承元クラスと作成クラスをしてください"
+                    "command : buildWPF -makeControl -parenctClass parentClassName -inheritacneClass makeClassName"
+                    return
+                }
+            
+                if (Test-Path ".\xaml\$inheritanceClass.xaml") {
+                    "作成しようとしているxamlファイルは既に存在しています"
+                    "新たに作成する場合は元ファイルを削除するかクラス名を変更してください"
+                    return
+                }
+            }
+
+            cat ($PSScriptRoot + '\parts\baseControl.xaml') -Encoding utf8 | & {
+                begin { $xaml = "" }
+                process {
+                    $xaml += $_.Replace('$parentClass', $parentClass).
+                    Replace('$namespace', $namespace).
+                    Replace('$inheritanceClass', $inheritanceClass).
+                    Replace('$addTitle', $addTitle).
+                    Replace('$addClassCode', $addClassCode).
+                    Replace('$addCsCode', $addCsCode) + "`n"
+                }
+                end { $xaml > "./xaml/$inheritanceClass.xaml" }
+            }
+
+            # add event process
+            if ($makeMainWindow) {
+                cat ($PSScriptRoot + '\parts\event.cs') -Encoding utf8 | & {
+                    begin { $cs = '' }
+                    process {
+                        $cs += $_.Replace('$namespace', $namespace) + "`n"
+                    }
+                    end { $cs > "./cs/event.cs" }
+                }
+            }
+    
+            return
         }
+        #endregion
 
-        if($makeControl){
-            if($inheritanceClass.Length -le 0 -or $parentClass.Length -le 0){
-                "Control の継承元クラスと作成クラスをしてください"
-                "command : buildWPF -makeControl -parenctClass parentClassName -inheritacneClass makeClassName"
+        #region makeMethod
+        if ($makeMethod) {
+            if ($namespace.Length -le 0) {
+                "構成ファイルがありません"
+                "command : -init -namespace 'namespace' で初期化してください"
+                return
+            }
+
+            if (Test-Path ".\cs\method$MethodName.cs") {
+                "同じメソッドファイルが存在します"
+                "新たに作成する場合は元ファイルを削除するか名前を変更してください"
                 return
             }
             
-            if(Test-Path ".\xaml\$inheritanceClass.xaml"){
-                "作成しようとしているxamlファイルは既に存在しています"
-                "新たに作成する場合は元ファイルを削除するかクラス名を変更してください"
+            cat ($PSScriptRoot + '\parts\baseMethodCode.cs') -Encoding utf8 | & {
+                begin { $cs = $csheader }
+                process {
+                    $cs += $_.Replace('$namespace', $namespace).Replace('$MethodName', $MethodName) + "`n"
+                }
+                end { $cs > ".\cs\method$MethodName.cs" }
+            }
+            return;
+        }
+        #endregion
+        
+
+
+        #region addReference
+        if ($addReference) {
+            if (!(Test-Path .\namespace)) {
+                "構成ファイルがありません"
+                "command : -init appname で初期化してください"
                 return
             }
-        }
-
-        "<$parentClass",
-	    'xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"',
-	    'xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"',
-	    "x:Class=`"$namespace.$inheritanceClass`"",
-	    "xmlns:local=`"clr-namespace:$namespace`"",
-        "xmlns:i=`"http://schemas.microsoft.com/xaml/behaviors`"",
-	    $addTitle,
-	    'Width="500"',
-	    'Height="500"',
-        'AllowDrop="True"',
-        'Drop=""',
-        'DragOver="',
-	    ">",
-        "<!-- add init cscode",
-        $addCsCode,
-        "-->",
-        "<!-- add class cscode",
-        $addClassCode,
-        "-->",
-        "<!-- add event example",
-        "<i:Interaction.Triggers>",
-        "<i:EventTrigger EventName=`"MouseDoubleClick`">",
-        "<i:InvokeCommandAction Command=`"{Binding ListBoxMouseDoubleClick}`" />",
-        "</i:EventTrigger>",
-        "</i:Interaction.Triggers>",
-        "-->",
-        "</$parentClass>"|&{begin{$xaml= ""} process{if($_.Length -gt 0){$xaml += "$_`n"} } end{$xaml > "./xaml/$inheritanceClass.xaml"}}
-    
-        return
-    }
-    #endregion
-
-    #region makeMethod
-    if($makeMethod){
-        if($namespace.Length -le 0){
-            "構成ファイルがありません"
-            "command : -init -namespace 'namespace' で初期化してください"
-            return
-        }
-
-        if(Test-Path ".\cs\method$MethodName.cs"){
-            "同じメソッドファイルが存在します"
-            "新たに作成する場合は元ファイルを削除するか名前を変更してください"
-            return
-        }
-
-
-        $csheader + @"
-namespace $namespace{
-    public static partial class MethodClass{
-        public static async Task $MethodName(ViewModel vm, object parameter){
-        }
-    }
-}
-"@ > ".\cs\method$MethodName.cs"
-        return;
-    }
-    #endregion
-
-    #region addReference
-    if($addReference){
-        if(!(Test-Path .\namespace)){
-            "構成ファイルがありません"
-            "command : -init appname で初期化してください"
-            return
-        }
-        if($dllPath.Length -le 0 -or $usingName.Length -le 0){
-            "dllPathまたはusingNameがありません"
-            "command: -addReference -dllPath 'dllFullPath' -usingName 'usingName'"
-        }
-@"
-        <Reference Include="$usingName">
-            <HintPath>$dllPath</HintPath>
-        </Reference>
-"@ >> ".\csproj\$addReference.csproj"
-        return
-    }
-    #endregion
-
-    #region addContent
-    if($addContent){
-        if(!(Test-Path .\namespace)){
-            "構成ファイルがありません"
-            "command : -init appname で初期化してください"
-            return
-        }
-        if($HintPath.Length -le 0 -or $usingName.Length -le 0){
-            "dllPathまたはusingNameがありません"
-            "command: -addContent -LinkPath 'LinkPath'"
-        }
-@"
-        <Content Include="$LinkPath">
-            <HintPath>$LinkPath</HintPath>
-            <CopyToOutputDirectory>AlWays</CopyToOutputDirectory>
-        </Content>
-"@ >> ".\csproj\$addReference.csproj"
-        return
-    }
-    #endregion
-
-
-    #region build
-    if($build -or $release){
-
-        #region pre-process
-        if($namespace.Length -le 0){
-            "構成ファイルがありません"
-            "`t-init -namesapce 'namespace'で初期化してください"
-            return
-        }
-
-        if("cs","xaml","csproj","property"|& {
-            begin{$flg = $True}
-            process{$lg = $flg -and (Test-Path $_)}
-            end{-not $flg}
-        }){
-            "構成ファイルとディレクトリがありません"
-            "-init -namespace 'namespace'で初期化してください"
-            return
-        }
-
-        ".\*.cs",".\*.xaml",".\*.csproj"|%{rm $_}
-        ".\cs\*.cs",".\xaml\*.xaml"|%{cp $_ .}
-
-        $outputpath = if($build){"build"}else{"release"}
-
-        #endregion
-
-        #region make initxaml.cs
-        Get-ChildItem .\xaml\*.xaml|&{
-            begin{
-                $initcscodestring = ""
+            if ($dllPath.Length -le 0 -or $usingName.Length -le 0) {
+                "dllPathまたはusingNameがありません"
+                "command: -addReference -dllPath 'dllFullPath' -usingName 'usingName'"
             }
 
-            process{
-                $Classname = $_.Name.replace(".xaml", "")
-                $xamlcode = Get-Content $_ -Raw
+            cat ($PSScriptRoot + '\parts\addReference.cspro') -Encoding utf8 | & {
+                begin { $cs = "" }
+                process {
+                    $cs += $_.Replace('$usingName', $usingName).Replace('$dllPath', $dllPath) + "`n"
+                }
+                end { $cs >> ".\csproj\addReference.csproj" }
+            }
 
-                $parentClass = [regex]::match($xamlcode, "<[a-zA-Z0-9_]+[\s/>]", [System.Text.RegularExpressions.RegexOptions]::Singleline).Value.replace("<","")
+            return
+        }
+        #endregion
 
-                $addinitcscode = [regex]::match($xamlcode, "<!-- add init cscode.*?-->", [System.Text.RegularExpressions.RegexOptions]::Singleline).Value.replace("<!-- add init cscode", "").replace("-->","")
+
+        #region addContent
+        if ($addContent) {
+            if (!(Test-Path .\namespace)) {
+                "構成ファイルがありません"
+                "command : -init appname で初期化してください"
+                return
+            }
+            if ($HintPath.Length -le 0 -or $usingName.Length -le 0) {
+                "dllPathまたはusingNameがありません"
+                "command: -addContent -LinkPath 'LinkPath'"
+            }
+            cat ($PSScriptRoot + '\parts\addContent.cspro') -Encoding utf8 | & {
+                begin { $cs = "" }
+                process {
+                    $cs += $_.Replace('$LinkPath', $LinkPath) + "`n"
+                }
+                end { $cs >> ".\csproj\addReference.csproj" }
+            }
+            return
+        }
+        #endregion
+
+
+        #region build
+        if ($build -or $release) {
+
+            #region pre-process
+            if ($namespace.Length -le 0) {
+                "構成ファイルがありません"
+                "`t-init -namesapce 'namespace'で初期化してください"
+                return
+            }
+
+            if ("cs", "xaml", "csproj", "property" | & {
+                    begin { $flg = $True }
+                    process { $lg = $flg -and (Test-Path $_) }
+                    end { -not $flg }
+                }) {
+                "構成ファイルとディレクトリがありません"
+                "-init -namespace 'namespace'で初期化してください"
+                return
+            }
+
+            ".\*.cs", ".\*.xaml", ".\*.csproj" | % { rm $_ }
+            ".\cs\*.cs", ".\xaml\*.xaml" | % { cp $_ . }
+
+            $outputpath = if ($build) { "build" }else { "release" }
+
+            #endregion
+
+            #region make initxaml.cs
+            Get-ChildItem .\xaml\*.xaml | & {
+                begin {
+                    $initcscodestring = ""
+                }
+
+                process {
+                    $Classname = $_.Name.replace(".xaml", "")
+                    $xamlcode = Get-Content $_ -Raw
+
+                    $parentClass = [regex]::match($xamlcode, "<[a-zA-Z0-9_]+[\s/>]", [System.Text.RegularExpressions.RegexOptions]::Singleline).Value.replace("<", "")
+
+                    $addinitcscode = [regex]::match($xamlcode, "<!-- add init cscode.*?-->", [System.Text.RegularExpressions.RegexOptions]::Singleline).Value.replace("<!-- add init cscode", "").replace("-->", "")
                 
-                $addclassmembercscode = [regex]::match($xamlcode, "<!-- add class cscode.*?-->", [System.Text.RegularExpressions.RegexOptions]::Singleline).Value.replace( "<!-- add class cscode", "").replace("-->","")
-                write-host "this :$addclassmembercscode"
-                "public partial class $Classname : $parentClass{",
-                "public $Classname(){",
+                    $addclassmembercscode = [regex]::match($xamlcode, "<!-- add class cscode.*?-->", [System.Text.RegularExpressions.RegexOptions]::Singleline).Value.replace( "<!-- add class cscode", "").replace("-->", "")
+                    write-host "this :$addclassmembercscode"
+                    "public partial class $Classname : $parentClass{",
+                    "public $Classname(){",
                     "InitializeComponent();",
                     $addinitcscode,
-                "}",
-                $addclassmembercscode,
-                "}"|%{$initcscodestring += $_ + "`n"}
-            }
+                    "}",
+                    $addclassmembercscode,
+                    "}" | % { $initcscodestring += $_ + "`n" }
+                }
 
-            end{
-                $csheader + "namespace $namespace{`n" + $initcscodestring + "`n}" > ".\initxaml.cs"
+                end {
+                    $csheader + "namespace $namespace{`n" + $initcscodestring + "`n}" > ".\initxaml.cs"
+                }
             }
-        }
-        #endregion
+            #endregion
 
-        #region make viewmodel_base.cs
-        $body = @"
+            #region make viewmodel_base.cs
+            $body = @"
 namespace $namespace{
     public partial class ViewModel : INotifyPropertyChanged{
         public event PropertyChangedEventHandler PropertyChanged;
@@ -310,22 +314,23 @@ namespace $namespace{
 	}
 }
 "@ 
-        $csheader + $body > ".\viewmodel_base.cs"
-        #endregion
+            $csheader + $body > ".\viewmodel_base.cs"
+            #endregion
 
-        #region make viewmodel_property.cs
-        $body = @"
+            #region make viewmodel_property.cs
+            $body = @"
 namespace $namespace{
     public partial class ViewModel{`n
 "@
-        Get-ChildItem .\property\*.tsv|Get-Content|%{
-            $row = $_.split("`t")
-            if($row[0] -match "ObservableCollection"){
-                $body += "`t`tprivate {0} _{1} = new {0}();`n" -f $row[0], $row[1]
-		        $body += "`t`tpublic {0} {1}{{ get{{ return _{1};}} }}" -f $row[0], $row[1]
-            }else{
-                $body += "`t`tprivate {0} _{1} = {2};`n" -f $row[0], $row[1],  $row[2]
-		        $body += @"
+            Get-ChildItem .\property\*.tsv | Get-Content | % {
+                $row = $_.split("`t")
+                if ($row[0] -match "ObservableCollection") {
+                    $body += "`t`tprivate {0} _{1} = new {0}();`n" -f $row[0], $row[1]
+                    $body += "`t`tpublic {0} {1}{{ get{{ return _{1};}} }}" -f $row[0], $row[1]
+                }
+                else {
+                    $body += "`t`tprivate {0} _{1} = {2};`n" -f $row[0], $row[1], $row[2]
+                    $body += @"
         public {0} {1}{{
             get{{ return _{1};}}
             set{{
@@ -338,22 +343,22 @@ namespace $namespace{
             }}
         }}`n
 "@ -f $row[0], $row[1]
+                }
             }
-        }
 
-        $body += "`t}`n}"
-        $csheader + $body > .\viewmodel_property.cs
-        #endregion
+            $body += "`t}`n}"
+            $csheader + $body > .\viewmodel_property.cs
+            #endregion
     
-        #region make viewmodel_command.cs
-        $body = @"
+            #region make viewmodel_command.cs
+            $body = @"
 namespace $namespace{
     public partial class ViewModel{`n
 "@
-        Get-ChildItem .\cs\method*.cs|Get-Content|?{ $_ -match "public static async Task"}|%{
-            [regex]::match($_.replace("public static async Task", "").Trim(), "^[^\s(]+").Value
-        }|%{
-        $body += @"
+            Get-ChildItem .\cs\method*.cs | Get-Content | ? { $_ -match "public static async Task" } | % {
+                [regex]::match($_.replace("public static async Task", "").Trim(), "^[^\s(]+").Value
+            } | % {
+                $body += @"
         private ICommand _$_; public ICommand $_{
             get{
                 if(_$_ == null){
@@ -363,15 +368,15 @@ namespace $namespace{
             }
         } 
 "@
-        }
+            }
 
-        Get-ChildItem .\property\*.tsv | Get-Content | ?{ $_.split("`t")[1] -match "Visibility"} | %{
-            $recode = $_.split("`t")
-            $propertyname = $recode[1]
-            $methodname = $propertyname + "Change"
-            $value1 = $recode[2]
-            $value2 = $recode[3]
-            $body += @"
+            Get-ChildItem .\property\*.tsv | Get-Content | ? { $_.split("`t")[1] -match "Visibility" } | % {
+                $recode = $_.split("`t")
+                $propertyname = $recode[1]
+                $methodname = $propertyname + "Change"
+                $value1 = $recode[2]
+                $value2 = $recode[3]
+                $body += @"
         private ICommand _$methodname; public ICommand $methodname{
             get{
                 if(_$methodname == null){
@@ -387,13 +392,13 @@ namespace $namespace{
         }
 
 "@
-        }
-        $body += "`t}`n}"
-        $csheader + $body > .\viewmodel_command.cs
-        #endregion
+            }
+            $body += "`t}`n}"
+            $csheader + $body > .\viewmodel_command.cs
+            #endregion
 
-        #region make csproj
-        $body = @"
+            #region make csproj
+            $body = @"
 <Project
 	xmlns="http://schemas.microsoft.com/developer/msbuild/2003"
 	DefaultTargets="Build"
@@ -427,51 +432,50 @@ namespace $namespace{
             <Link>Microsoft.Xaml.Behaviors.DesignTools.dll</Link>
             <CopyToOutputDirectory>AlWays</CopyToOutputDirectory>
         </Content>
+        <Reference Include="System.Runtime.WindowsRuntime"></Reference>
+        <Reference Include="System.Runtime.WindowsRuntime.UI.Xaml"></Reference>
+        <Reference Include="System.Runtime.InteropServices.WindowsRuntime"></Reference>
+        <Reference Include="windows.winmd" />
+        <Reference Include="Windows.Foundation.UniversalApiContract.winmd" />
+        <Reference Include="Windows.Foundation.FoundationContract.winmd" />
     </ItemGroup>
 
     <!-- XAML -->
     <ItemGroup>
         <ApplicationDefinition Include="Application.xaml" />`n
 "@
-        Get-ChildItem .\xaml\*.xaml|%{
-            $body += "`t`t<Page Include=`"{0}`" />`n" -f $_.Name
-        }
-        $body += @"
+            Get-ChildItem .\xaml\*.xaml | % {
+                $body += "`t`t<Page Include=`"{0}`" />`n" -f $_.Name
+            }
+            $body += @"
     </ItemGroup>
     <!-- cs -->
     <ItemGroup>`n
 "@
-        Get-ChildItem *.cs | %{
-            $body += @"
+            Get-ChildItem *.cs | % {
+                $body += @"
         <Compile Include=`"{0}`" />`n 
 "@ -f $_.Name
-        }
-        $body += @"
+            }
+            $body += @"
     </ItemGroup>
     <!-- Reference -->
-    <ItemGroup>`n
 "@
-        Get-ChildItem .\csproj\*.csproj | Get-Content|%{ $body += $_}
-        $body += @"
-    </ItemGroup>
+            Get-ChildItem .\csproj\*.csproj | Get-Content | % { $body += $_ }
+            $body += @"
 	<Import Project="`$(MSBuildBinPath)\Microsoft.CSharp.targets" />
 </Project>
 "@
-        $body > "$namespace.csproj"
-        #endregion
+            $body > "$namespace.csproj"
+            #endregion
 
-        #region make Application.xaml
-    @"
-<Application
-	xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-	StartupUri="MainWindow.xaml"
-/>
-"@ > Application.xaml
-        #endregion 
+            #region make Application.xaml
+            cp ($PSScriptRoot + '\parts\Application.xaml') .\Application.xaml
+            #endregion 
 
-        C:\Windows\Microsoft.NET\Framework64\v4.0.30319\MSBuild
+            C:\Windows\Microsoft.NET\Framework64\v4.0.30319\MSBuild
  
-    }
-    #endregion
+        }
+        #endregion
     }
 }
