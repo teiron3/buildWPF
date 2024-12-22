@@ -1,0 +1,6 @@
+<ItemGroup>
+    <Content Include="$LinkPath">
+        <HintPath>$LinkPath</HintPath>
+        <CopyToOutputDirectory>AlWays</CopyToOutputDirectory>
+    </Content>
+</ItemGroup>

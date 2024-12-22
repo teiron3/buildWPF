@@ -1,6 +1,6 @@
-using System.Collections.ObjectModel;
+﻿using System.Collections.ObjectModel;
 using System.Windows;
-
+using System.Windows.Input;
 namespace $namespace
 {
 	public partial class MainWindow : Window
@@ -28,6 +28,11 @@ namespace $namespace
 				e.Effects = DragDropEffects.None;
 			}
 			e.Handled = true;
+		}
+
+		private void DoubleClick(object sender, MouseButtonEventArgs e)
+		{
+			//処理
 		}
 	}
 }

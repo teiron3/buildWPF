@@ -1,0 +1,5 @@
+﻿<ItemGroup>
+    <Reference Include="$usingName">
+        <HintPath>$dllPath</HintPath>
+    </Reference>
+</ItemGroup>
