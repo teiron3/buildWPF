@@ -1,0 +1,13 @@
+<ItemGroup>
+    <Reference Include="Microsoft.Xaml.Behaviors">
+        <HintPath>dll\Microsoft.Xaml.Behaviors.dll</HintPath>
+    </Reference>
+    <Content Include="dll\Microsoft.Xaml.Behaviors.Design.dll">
+        <Link>Microsoft.Xaml.Behaviors.Design.dll</Link>
+        <CopyToOutputDirectory>AlWays</CopyToOutputDirectory>
+    </Content>
+    <Content Include="dll\Microsoft.Xaml.Behaviors.DesignTools.dll">
+        <Link>Microsoft.Xaml.Behaviors.DesignTools.dll</Link>
+        <CopyToOutputDirectory>AlWays</CopyToOutputDirectory>
+    </Content>
+</ItemGroup>

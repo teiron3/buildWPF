@@ -1,0 +1,14 @@
+<ItemGroup>
+    <Reference Include="System.Runtime.WindowsRuntime"></Reference>
+    <Reference Include="System.Runtime.WindowsRuntime.UI.Xaml"></Reference>
+    <Reference Include="System.Runtime.InteropServices.WindowsRuntime"></Reference>
+    <Reference Include="windows.winmd">
+        <HintPath>dll\Windows.WinMD</HintPath>
+    </Reference>
+    <Reference Include="Windows.Foundation.UniversalApiContract.winmd">
+        <HintPath>dll\Windows.Foundation.UniversalApiContract.winmd</HintPath>
+    </Reference>
+    <Reference Include="Windows.Foundation.FoundationContract.winmd">
+        <HintPath>dll\Windows.Foundation.FoundationContract.winmd</HintPath>
+    </Reference>
+</ItemGroup>
