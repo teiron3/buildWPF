@@ -7,6 +7,8 @@ WPFビルド用のコマンド
 	-makeControl 'ParentClassName' 'ClassName' でControl.xamlを作成
 	-makeMethod 'MethodName' でMethodClass.csを作成
 	-addReferencd 'dllPath' 'usingName' で参照を追加
+    -addWinMD でWinMDを追加
+    -addBehavior でBehaviorを追加
 	-build でビルド
 	-release でリリースビルド
     プロパティ用tsvは[型名]-[プロパティ名]-[初期値]-[変更値(visibilityのみ)]で作成
@@ -30,6 +32,9 @@ function Invoke-buildWPF {
         [switch]$addReferencd,
         [string]$dllPath = "",
         [string]$usingName,
+        
+        [switch]$addWinMD,
+        [switch]$addBehavior,
 
         [switch]$addContent,
         [string]$LinkPath = "",
@@ -76,10 +81,7 @@ function Invoke-buildWPF {
             }
     
             $namespace > .\namespace
-            'cs', 'xaml', 'csproj', 'property' | ? { -not (Test-Path $_) } | % { md $_ }
-            if (-not (Test-Path 'dll')) {
-                cp ($PSScriptRoot + "\dll") 'dll' -Recurse
-            }
+            'cs', 'xaml', 'csproj', 'property', 'dll' | ? { -not (Test-Path $_) } | % { md $_ }
 
             return
         }
@@ -187,7 +189,7 @@ function Invoke-buildWPF {
                 "command: -addReference -dllPath 'dllFullPath' -usingName 'usingName'"
             }
 
-            cat ($PSScriptRoot + '\parts\addReference.cspro') -Encoding utf8 | & {
+            cat ($PSScriptRoot + '\parts\addReference.csproj') -Encoding utf8 | & {
                 begin { $cs = "" }
                 process {
                     $cs += $_.Replace('$usingName', $usingName).Replace('$dllPath', $dllPath) + "`n"
@@ -195,6 +197,37 @@ function Invoke-buildWPF {
                 end { $cs >> ".\csproj\addReference.csproj" }
             }
 
+            return
+        }
+        #endregion
+
+        
+        #region addWinMD
+        if ($addWinMD) {
+            if (!(Test-Path .\namespace)) {
+                "構成ファイルがありません"
+                "command : -init appname で初期化してください"
+                return
+            }
+
+            cp ($PSScriptRoot + '\dll\*.winmd') ".\dll\" 
+            cp ($PSScriptRoot + '\parts\addWinMD.csproj') ".\csproj\" 
+            return
+        }
+        #endregion
+        
+        #region addBehavior
+        if ($addBehavior) {
+            if (!(Test-Path .\namespace)) {
+                "構成ファイルがありません"
+                "command : -init appname で初期化してください"
+                return
+            }
+
+            'Microsoft.Xaml.Behaviors.dll', 'Microsoft.Xaml.Behaviors.Design.dll', 'Microsoft.Xaml.Behaviors.DesignTools.dll' | % {
+                cp ($PSScriptRoot + '\dll\' + $_) ".\dll\"
+            }
+            cp ($PSScriptRoot + '\parts\behavior.csproj') ".\csproj\"
             return
         }
         #endregion
@@ -318,10 +351,8 @@ namespace $namespace{
             #endregion
 
             #region make viewmodel_property.cs
-            $body = @"
-namespace $namespace{
-    public partial class ViewModel{`n
-"@
+            $body = " namespace $namespace`n{ public partial class ViewModel{`n "
+
             Get-ChildItem .\property\*.tsv | Get-Content | % {
                 $row = $_.split("`t")
                 if ($row[0] -match "ObservableCollection") {
@@ -416,28 +447,12 @@ namespace $namespace{
 	<ItemGroup>
 		<Reference Include="System" />
 		<Reference Include="System.Data" />
+		<Reference Include="System.Runtime" />
 		<Reference Include="System.Xml" />
 		<Reference Include="System.Xaml" />
 		<Reference Include="WindowsBase" />
 		<Reference Include="PresentationCore" />
 		<Reference Include="PresentationFramework" />
-        <Reference Include="Microsoft.Xaml.Behaviors">
-            <HintPath>dll\Microsoft.Xaml.Behaviors.dll</HintPath>
-        </Reference>
-        <Content Include="dll\Microsoft.Xaml.Behaviors.Design.dll">
-            <Link>Microsoft.Xaml.Behaviors.Design.dll</Link>
-            <CopyToOutputDirectory>AlWays</CopyToOutputDirectory>
-        </Content>
-        <Content Include="dll\Microsoft.Xaml.Behaviors.DesignTools.dll">
-            <Link>Microsoft.Xaml.Behaviors.DesignTools.dll</Link>
-            <CopyToOutputDirectory>AlWays</CopyToOutputDirectory>
-        </Content>
-        <Reference Include="System.Runtime.WindowsRuntime"></Reference>
-        <Reference Include="System.Runtime.WindowsRuntime.UI.Xaml"></Reference>
-        <Reference Include="System.Runtime.InteropServices.WindowsRuntime"></Reference>
-        <Reference Include="windows.winmd" />
-        <Reference Include="Windows.Foundation.UniversalApiContract.winmd" />
-        <Reference Include="Windows.Foundation.FoundationContract.winmd" />
     </ItemGroup>
 
     <!-- XAML -->
@@ -461,7 +476,7 @@ namespace $namespace{
     </ItemGroup>
     <!-- Reference -->
 "@
-            Get-ChildItem .\csproj\*.csproj | Get-Content | % { $body += $_ }
+            Get-ChildItem .\csproj\*.csproj | Get-Content | % { $body += $_ + "`n" }
             $body += @"
 	<Import Project="`$(MSBuildBinPath)\Microsoft.CSharp.targets" />
 </Project>
