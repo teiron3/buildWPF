@@ -413,8 +413,8 @@ namespace $namespace{
                 if(_$methodname == null){
                     _$methodname = new MakeCommandClass(
                         this,
-                        new Action<ViewModel, object>(
-                            (vm, obj) => { vm.$propertyname = (vm.$propertyname == $value1) ? $value2 : $value1;}
+                        new Func<ViewModel, object, Task>(
+                            async (vm, obj) => { vm.$propertyname = (vm.$propertyname == $value1) ? $value2 : $value1;}
                         )
                     );
                 }
