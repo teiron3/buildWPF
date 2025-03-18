@@ -322,6 +322,9 @@ namespace $namespace{
 		private void NotifyPropertyChanged(string info){
 			if(PropertyChanged != null){
 				PropertyChanged(this, new PropertyChangedEventArgs(info));
+            	Application.Current.Dispatcher.Invoke(
+					new Action(() => {}),DispatcherPriority.Background, new object[]{}
+				);
 
 			}
         }
@@ -336,13 +339,11 @@ namespace $namespace{
 		}
 		public event EventHandler CanExecuteChanged;
 		public bool CanExecute(object parameter){return true;}
-		public void Execute(object parameter){
-            var task = execmd(vm, parameter);
-            while(!task.IsCompleted){
-            	Application.Current.Dispatcher.Invoke(
-					new Action(() => {}),DispatcherPriority.Background, new object[]{}
-				);
-            };
+		public async void Execute(object parameter){
+            await AsyncExec(vm, parameter);
+        }
+        private async Task AsyncExec(object parameter){
+            await execmd(vm, parameter);
         }
 	}
 }
