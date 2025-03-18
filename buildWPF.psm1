@@ -340,7 +340,7 @@ namespace $namespace{
 		public event EventHandler CanExecuteChanged;
 		public bool CanExecute(object parameter){return true;}
 		public async void Execute(object parameter){
-            await AsyncExec(vm, parameter);
+            await AsyncExec(parameter);
         }
         private async Task AsyncExec(object parameter){
             await execmd(vm, parameter);
