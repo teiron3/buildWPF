@@ -340,11 +340,8 @@ namespace $namespace{
 		public event EventHandler CanExecuteChanged;
 		public bool CanExecute(object parameter){return true;}
 		public async void Execute(object parameter){
-            await AsyncExec(parameter);
-        }
-        private async Task AsyncExec(object parameter){
-            await execmd(vm, parameter);
-        }
+            		await execmd(vm, parameter);
+        	}
 	}
 }
 "@ 
@@ -370,7 +367,9 @@ namespace $namespace{
                     return;
                 }}else{{
                     _{1} = value;
-                    NotifyPropertyChanged("{1}");
+		    Application.Current.Dispatcher.Invoke(
+                     () => NotifyPropertyChanged("{1}")
+                    );
                 }}
             }}
         }}`n
